@@ -94,3 +94,57 @@ plot4
 
 library(patchwork)
 (plot1 + plot2) / (plot3 + plot4)
+
+
+
+
+
+
+
+
+
+
+#Fitting a regression model
+library(tidymodels)
+
+model = linear_reg() |> 
+  set_engine("lm") |> 
+  set_mode("regression") |> 
+  fit(formula = count ~ season + workingday + weather + temp + humidity + windspeed, data = bikes)
+
+model
+
+testData = vroom("BikeShare2/test.csv") |> 
+  mutate(season = as.factor(season),
+         workingday = as.factor(workingday),
+         weather = as.factor(weather))
+
+
+bike_predictions = predict(model, new_data = testData)
+
+bike_predictions
+
+#DO LOG PREDICTIONS
+
+model2 = linear_reg() |> 
+  set_engine("lm") |> 
+  set_mode("regression") |> 
+  fit(formula = log(count) ~ season + workingday + weather + temp + humidity + windspeed, data = bikes)
+
+bike_predictions2 = predict(model2, new_data = testData) |> exp()
+
+bike_predictions2
+
+
+
+#Formatting and submitting
+kaggle_submission = bike_predictions2 |> 
+bind_cols(testData) |> 
+  select(datetime, .pred) |> 
+  rename(count=.pred) |> 
+  mutate(count=pmax(0, count)) |> 
+  mutate(datetime=as.character(format(datetime)))
+
+vroom_write(x=kaggle_submission, file="./LinearPreds.csv", delim=",")
+
+
