@@ -148,3 +148,31 @@ bind_cols(testData) |>
 vroom_write(x=kaggle_submission, file="./LinearPreds.csv", delim=",")
 
 
+
+
+#Poisson Regression
+library(poissonreg)
+library(parsnip)
+my_pois_model = poisson_reg() |> 
+  set_engine("glm") |> 
+  set_mode("regression") |> 
+  fit(count ~ season + workingday + weather + temp + humidity + windspeed, data = bikes)
+
+
+bike_predictions = predict(my_pois_model, new_data = testData)
+bike_predictions
+
+pois_kaggle_submission = bike_predictions |> 
+bind_cols(testData) |> 
+  select(datetime, .pred) |> 
+  rename(count=.pred) |> 
+  mutate(datetime=as.character(format(datetime)))
+
+
+vroom_write(x=pois_kaggle_submission, file="./PoissonPreds.csv", delim = ",")
+
+
+
+
+
+
