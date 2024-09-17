@@ -176,3 +176,30 @@ vroom_write(x=pois_kaggle_submission, file="./PoissonPreds.csv", delim = ",")
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Unrelated
+auto_mpg <- mtcars[mtcars$am == 0, "mpg"]
+
+manual_mpg <- mtcars[mtcars$am == 1, "mpg"] 
+
+t_test_result <- t.test(manual_mpg, auto_mpg, var.equal = F, paired = T)
+
+print(t_test_result)
+
+t.test(mtcars$mpg[mtcars$am==0], mtcars$mpg[mtcars$am==1], alternative="l")
+
+
+

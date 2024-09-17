@@ -1,0 +1,80 @@
+---
+title: "BikeShare"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+You can add options to executable code like this
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(vroom)
+```
+
+```{r}
+bikes = vroom("train.csv")
+bikes_test =vroom("test.csv")
+```
+
+```{r}
+bikes = bikes |> 
+  select(-casual, -registered) |> 
+  mutate(count = log(count))
+```
+
+```{r}
+bike_recipe = recipe(count ~ ., bikes) |> 
+  step_mutate(weather = ifelse(weather == 4, 3, weather)) |> 
+  step_mutate(weather = as.factor(weather)) |> 
+  step_time(datetime, features = "hour") |> 
+  step_mutate(season = as.factor(season)) |> 
+  step_rm(atemp) |> 
+  step_poly(temp, degree = 2)
+```
+
+```{r}
+model = linear_reg() |> 
+  set_engine("lm") |> 
+  set_mode("regression")
+```
+
+```{r}
+bike_workflow = workflow() |> 
+  add_recipe(bike_recipe) |> 
+  add_model(model) |> 
+  fit(data = bikes)
+```
+
+```{r}
+lin_preds = predict(bike_workflow, new_data = bikes_test) |> exp()
+```
+
+```{r}
+kaggle_submission = lin_preds |> 
+bind_cols(bikes_test) |> 
+  select(datetime, .pred) |> 
+  rename(count=.pred) |> 
+  mutate(datetime = as.character(format(datetime)))
+```
+
+```{r}
+vroom_write(x = kaggle_submission,
+            file = "./LinearPreds4.csv",
+            delim = ",")
+```
