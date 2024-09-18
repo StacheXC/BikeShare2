@@ -44,13 +44,21 @@ bike_recipe = recipe(count ~ ., bikes) |>
   step_mutate(weather = as.factor(weather)) |> 
   step_time(datetime, features = "hour") |> 
   step_mutate(season = as.factor(season)) |> 
-  step_rm(atemp) |> 
-  step_poly(temp, degree = 2)
+  step_mutate(datetime_hour = as.factor(datetime_hour)) |> 
+  step_poly(temp, degree = 2) |> 
+  step_dummy(all_nominal_predictors()) |> 
+  step_normalize(all_numeric_predictors()) |> 
+  step_rm(datetime)
 ```
 
 ```{r}
-model = linear_reg() |> 
-  set_engine("lm") |> 
+prepped_recipe = prep(bike_recipe)
+bake(prepped_recipe, new_data = bikes_test)
+```
+
+```{r}
+model = linear_reg(penalty = 0.1, mixture = 0) |> 
+  set_engine("glmnet") |> 
   set_mode("regression")
 ```
 
