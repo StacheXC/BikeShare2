@@ -1,4 +1,5 @@
 ---
+|> ---
 title: "BikeShare"
 format: html
 editor: visual
@@ -25,11 +26,12 @@ The `echo: false` option disables the printing of code (only output is displayed
 library(tidyverse)
 library(tidymodels)
 library(vroom)
+library(glmnet)
 ```
 
 ```{r}
 bikes = vroom("train.csv")
-bikes_test =vroom("test.csv")
+bikes_test = vroom("test.csv")
 ```
 
 ```{r}
@@ -52,25 +54,49 @@ bike_recipe = recipe(count ~ ., bikes) |>
 ```
 
 ```{r}
-prepped_recipe = prep(bike_recipe)
-bake(prepped_recipe, new_data = bikes_test)
+#prepped_recipe = prep(bike_recipe)
+#bake(prepped_recipe, new_data = bikes_test)
 ```
 
 ```{r}
-model = linear_reg(penalty = 0.1, mixture = 0) |> 
-  set_engine("glmnet") |> 
-  set_mode("regression")
+model = linear_reg(penalty = tune(), mixture = tune()) |> 
+  set_engine("glmnet")
 ```
 
 ```{r}
 bike_workflow = workflow() |> 
   add_recipe(bike_recipe) |> 
-  add_model(model) |> 
+  add_model(model)
+```
+
+```{r}
+grid_of_tuning_params = grid_regular(penalty(), mixture(), levels = 5)
+```
+
+```{r}
+folds = vfold_cv(bikes, v = 10, repeats = 1)
+```
+
+```{r}
+CV_results = bike_workflow |> 
+  tune_grid(resamples = folds,
+  grid = grid_of_tuning_params,
+  metrics = metric_set(rmse, mae, rsq))
+```
+
+```{r}
+bestTune = CV_results |> 
+  select_best(metric = "rmse")
+```
+
+```{r}
+final_wf = bike_workflow |> 
+  finalize_workflow(bestTune) |> 
   fit(data = bikes)
 ```
 
 ```{r}
-lin_preds = predict(bike_workflow, new_data = bikes_test) |> exp()
+lin_preds = predict(final_wf, new_data = bikes_test) |> exp()
 ```
 
 ```{r}
