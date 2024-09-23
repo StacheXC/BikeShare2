@@ -1,0 +1,114 @@
+---
+title: "BikeShareTrees"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(vroom)
+library(glmnet)
+library(rpart)
+```
+
+```{r}
+bikes = vroom("train.csv")
+bikes_test = vroom("test.csv")
+```
+
+```{r}
+bikes = bikes |> 
+  select(-casual, -registered)
+```
+
+```{r}
+bike_recipe = recipe(count ~ ., bikes) |> 
+  step_mutate(weather = ifelse(weather == 4, 3, weather)) |> 
+  step_mutate(weather = as.factor(weather)) |> 
+  step_time(datetime, features = "hour") |> 
+  step_mutate(season = as.factor(season)) |> 
+  step_rm(datetime)
+```
+
+```{r}
+model = decision_tree(tree_depth = tune(),
+                      cost_complexity = tune(),
+                      min_n = tune()) |> 
+  set_engine("rpart") |> 
+  set_mode("regression")
+```
+
+```{r}
+bike_workflow = workflow() |> 
+  add_recipe(bike_recipe) |> 
+  add_model(model)
+```
+
+```{r}
+grid_of_tuning_params = grid_regular(tree_depth(),
+                                     cost_complexity(),
+                                     min_n(),
+                                     levels = 5)
+```
+
+```{r}
+folds = vfold_cv(bikes, v = 10, repeats = 1)
+```
+
+```{r}
+CV_results = bike_workflow |> 
+  tune_grid(resamples = folds,
+  grid = grid_of_tuning_params,
+  metrics = metric_set(rmse))
+```
+
+```{r}
+bestTune = CV_results |> 
+  select_best(metric = "rmse")
+```
+
+```{r}
+final_wf = bike_workflow |> 
+  finalize_workflow(bestTune) |> 
+  fit(data = bikes)
+```
+
+```{r}
+lin_preds = predict(final_wf, new_data = bikes_test)
+```
+
+```{r}
+kaggle_submission = lin_preds |> 
+bind_cols(bikes_test) |> 
+  select(datetime, .pred) |> 
+  rename(count=.pred) |> 
+  mutate(datetime = as.character(format(datetime)))
+```
+
+```{r}
+vroom_write(x = kaggle_submission,
+            file = "./TreesPreds.csv",
+            delim = ",")
+```
