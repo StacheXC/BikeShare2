@@ -26,10 +26,10 @@ You can add options to executable code like this
 The `echo: false` option disables the printing of code (only output is displayed).
 
 ```{r}
-library(tidyverse)
+#library(tidyverse)
 library(tidymodels)
 library(vroom)
-library(glmnet)
+#library(glmnet)
 library(rpart)
 ```
 
@@ -53,10 +53,10 @@ bike_recipe = recipe(count ~ ., bikes) |>
 ```
 
 ```{r}
-model = decision_tree(tree_depth = tune(),
-                      cost_complexity = tune(),
-                      min_n = tune()) |> 
-  set_engine("rpart") |> 
+model = rand_forest(mtry = tune(),
+                    min_n = tune(),
+                    trees = 500) |> 
+  set_engine("ranger") |> 
   set_mode("regression")
 ```
 
@@ -67,8 +67,7 @@ bike_workflow = workflow() |>
 ```
 
 ```{r}
-grid_of_tuning_params = grid_regular(tree_depth(),
-                                     cost_complexity(),
+grid_of_tuning_params = grid_regular(mtry(range = c(1, 8)),
                                      min_n(),
                                      levels = 5)
 ```
@@ -109,6 +108,6 @@ bind_cols(bikes_test) |>
 
 ```{r}
 vroom_write(x = kaggle_submission,
-            file = "./TreesPreds.csv",
+            file = "./ForestPreds.csv",
             delim = ",")
 ```
